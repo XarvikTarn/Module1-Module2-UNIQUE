@@ -1,0 +1,13 @@
+hostnamectl set-hostname HQ-CLI.au-team.irpo && exec bash
+sed -i 's|http://ftp.altlinux.org/pub/distributions/ALTLinux|http://10.45.33.250:3142/altlinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+nmcli con add con-name DHCP-CLI type ethernet ifname enp7s1 ipv4.method auto ipv4.dhcp-client-id 01:11:11:11:11:11
+nmcli con mod DHCP-CLI ipv4.dns 8.8.8.8
+nmcli con up DHCP-CLI
+apt-get update && apt-get install -y tzdata 
+timedatectl set-timezone Asia/Vladivostok && date 
+nmcli con mod DHCP-CLI ipv4.dns 172.16.100.2
+nmcli con up DHCP-CLI
+systemctl restart network
+ssh sshuser@hq-srv.au-team.irpo -p 2026 "date && ping ya.ru -c 2"
+history -a
