@@ -1,0 +1,104 @@
+hostnamectl set-hostname HQ-RTR.au-team.irpo && exec bash
+sed -i 's|http://ftp.altlinux.org/pub/distributions/ALTLinux|http://10.45.33.250:3142/altlinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+mkdir /etc/net/ifaces/enp7s{1,2}
+mkdir /etc/net/ifaces/gre1
+mkdir /etc/net/ifaces/vlan{100,200,999}
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "172.16.1.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 172.16.1.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 8.8.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+cat <<EOF > /etc/net/ifaces/gre1/options
+TYPE=iptun
+TUNTYPE=gre
+TUNLOCAL=172.16.1.2
+TUNREMOTE=172.16.2.2
+TUNTTL=64
+TUNOPTIONS='ttl 64'
+EOF
+echo "10.10.10.1/30" > /etc/net/ifaces/gre1/ipv4address
+cat <<EOF > /etc/net/ifaces/vlan100/options
+TYPE=vlan
+HOST=enp7s2
+VID=100
+EOF
+echo "172.16.100.1/28" > /etc/net/ifaces/vlan100/ipv4address
+cat <<EOF > /etc/net/ifaces/vlan200/options
+TYPE=vlan
+HOST=enp7s2
+VID=200
+EOF
+echo "172.16.200.1/27" > /etc/net/ifaces/vlan200/ipv4address
+cat <<EOF > /etc/net/ifaces/vlan999/options
+TYPE=vlan
+HOST=enp7s2
+VID=999
+EOF
+echo "172.16.99.1/29" > /etc/net/ifaces/vlan999/ipv4address
+sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/net/sysctl.conf
+sysctl -w net.ipv4.ip_forward=1
+sysctl net.ipv4.ip_forward
+systemctl restart network && sleep 3
+apt-get update && apt-get install -y tzdata nftables frr sudo dnsmasq
+timedatectl set-timezone Asia/Vladivostok && date 
+cat <<EOF > /etc/nftables/nftables.nft
+#!/usr/sbin/nft -f
+flush ruleset
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat;
+        oifname "enp7s1" masquerade
+    }
+}
+EOF
+systemctl enable --now nftables && systemctl status --no-pager nftables
+nft list ruleset
+sed -i 's/ospfd=no/ospfd=yes/' /etc/frr/daemons
+cat <<'EOF' > /etc/frr/frr.conf
+interface gre1
+ ip ospf area 0
+ ip ospf authentication
+ ip ospf authentication-key P@ssw0rd
+ no ip ospf passive
+exit
+!
+interface vlan100
+ ip ospf area 0
+exit
+!
+interface vlan200
+ ip ospf area 0
+exit
+!
+interface vlan999
+ ip ospf area 0
+exit
+!
+router ospf
+ passive-interface default
+exit
+EOF
+systemctl enable --now frr && systemctl status --no-pager frr
+cat <<EOF > /etc/dnsmasq.conf
+port=0
+interface=vlan200
+dhcp-range=172.16.200.10,172.16.200.14,255.255.255.224,12h
+dhcp-host=id:01:11:11:11:11:11,172.16.200.10
+dhcp-option=3,172.16.200.1    
+dhcp-option=6,172.16.100.2    
+domain=au-team.irpo           
+EOF
+cat <<EOF >> /etc/resolvconf.conf
+resolv_conf_local_only=NO
+deny_interfaces="lo.dnsmasq"
+EOF
+resolvconf -u
+systemctl enable --now dnsmasq && systemctl status --no-pager dnsmasq
+useradd -m -s /bin/bash net_admin
+echo "net_admin:P@ssw0rd" | chpasswd
+echo "net_admin ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+echo "nameserver 172.16.100.2" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network sshd
+vtysh -c "show ip ospf neighbor"
+history -a
