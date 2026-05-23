@@ -1,0 +1,36 @@
+hostnamectl set-hostname ISP.au-team.irpo && exec bash
+sed -i 's|http://ftp.altlinux.org/pub/distributions/ALTLinux|http://10.45.33.250:3142/altlinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+mkdir /etc/net/ifaces/enp7s{1,2,3}
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "BOOTPROTO=dhcp" >> /etc/net/ifaces/enp7s1/options
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+echo "172.16.1.1/28" > /etc/net/ifaces/enp7s2/ipv4address
+echo "TYPE=eth" > /etc/net/ifaces/enp7s3/options
+echo "172.16.2.1/28" > /etc/net/ifaces/enp7s3/ipv4address
+sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/net/sysctl.conf
+sysctl -w net.ipv4.ip_forward=1
+sysctl net.ipv4.ip_forward
+systemctl restart network
+apt-get update && apt-get install -y tzdata nftables 
+timedatectl set-timezone Asia/Vladivostok && date 
+cat <<EOF > /etc/nftables/nftables.nft
+#!/usr/sbin/nft -f
+flush ruleset
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat;
+        oifname "enp7s1" masquerade
+    }
+}
+table ip filter {
+    chain forward {
+        type filter hook forward priority 0;
+        tcp flags syn tcp option maxseg size set 1400
+    }
+}
+EOF
+systemctl enable --now nftables && systemctl status --no-pager nftables
+nft list ruleset
+systemctl restart network
+history -a
