@@ -1,0 +1,97 @@
+hostnamectl set-hostname HQ-SRV.au-team.irpo && exec bash
+sed -i 's|http://ftp.altlinux.org/pub/distributions/ALTLinux|http://10.45.33.250:3142/altlinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+mkdir /etc/net/ifaces/enp7s1
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "172.16.100.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 172.16.100.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 8.8.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network
+apt-get update && apt-get install -y tzdata bind bind-utils
+timedatectl set-timezone Asia/Vladivostok
+rndc-confgen -a -c /etc/bind/rndc.key
+cat <<EOF > /etc/bind/options.conf
+options {
+    recursion yes;
+    allow-query { any; };
+    forwarders { 8.8.8.8; 77.88.8.8; };
+    dnssec-validation no;
+    listen-on-v6 { none; };
+};
+EOF
+cat <<EOF > /etc/bind/local.conf
+zone "au-team.irpo" {
+    type master;
+    file "/etc/bind/zone/au-team.irpo";
+};
+EOF
+cat <<EOF > /etc/bind/zone/au-team.irpo
+\$TTL    604800
+@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      hq-srv.au-team.irpo.
+@       IN      A       172.16.100.2
+;
+hq-srv  IN      A       172.16.100.2
+hq-rtr  IN      A       172.16.100.1
+hq-cli  IN      A       172.16.200.10
+br-rtr  IN      A       172.16.2.2
+br-srv  IN      A       172.16.10.2
+docker  IN      A       172.16.1.1
+web     IN      A       172.16.2.1
+EOF
+cat <<EOF >> /etc/bind/local.conf
+zone "16.172.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zone/16.172.in-addr.arpa";
+};
+EOF
+cat <<EOF > /etc/bind/zone/16.172.in-addr.arpa
+\$TTL    604800
+@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      hq-srv.au-team.irpo.
+;
+2.100   IN      PTR     hq-srv.au-team.irpo.
+1.100   IN      PTR     hq-rtr.au-team.irpo.
+10.200  IN      PTR     hq-cli.au-team.irpo.
+EOF
+chown root:named /etc/bind/zone/au-team.irpo
+chmod 640 /etc/bind/zone/au-team.irpo
+chown root:named /etc/bind/zone/16.172.in-addr.arpa
+chmod 640 /etc/bind/zone/16.172.in-addr.arpa
+systemctl enable --now bind && systemctl status --no-pager bind 
+echo "nameserver 127.0.0.1" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart bind
+rndc reload
+host 172.16.100.2 127.0.0.1
+
+useradd -u 2026 -m -s /bin/bash sshuser
+echo "sshuser:P@ssw0rd" | chpasswd
+echo "sshuser ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/sshuser
+echo "Authorized access only" > /etc/issue.net
+cat <<EOF >> /etc/openssh/sshd_config
+
+# Hardening Rules
+Port 2026
+PermitRootLogin no
+MaxAuthTries 2
+Banner /etc/issue.net
+AllowUsers sshuser
+EOF
+systemctl restart network 
+systemctl restart sshd
+systemctl restart bind
+host ya.ru
+host hq-rtr.au-team.irpo 127.0.0.1
+history -a
