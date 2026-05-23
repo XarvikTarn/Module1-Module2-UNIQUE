@@ -1,0 +1,65 @@
+hostnamectl set-hostname BR-RTR.au-team.irpo && exec bash
+sed -i 's|http://ftp.altlinux.org/pub/distributions/ALTLinux|http://10.45.33.250:3142/altlinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+mkdir /etc/net/ifaces/enp7s{1,2}
+mkdir /etc/net/ifaces/gre1
+echo "TYPE=eth" > /etc/net/ifaces/enp7s1/options
+echo "172.16.2.2/28" > /etc/net/ifaces/enp7s1/ipv4address
+echo "default via 172.16.2.1" > /etc/net/ifaces/enp7s1/ipv4route
+echo "nameserver 8.8.8.8" > /etc/net/ifaces/enp7s1/resolv.conf
+echo "TYPE=eth" > /etc/net/ifaces/enp7s2/options
+echo "172.16.10.1/28" > /etc/net/ifaces/enp7s2/ipv4address
+cat <<EOF > /etc/net/ifaces/gre1/options
+TYPE=iptun
+TUNTYPE=gre
+TUNLOCAL=172.16.2.2
+TUNREMOTE=172.16.1.2
+TUNTTL=64
+TUNOPTIONS='ttl 64'
+EOF
+echo "10.10.10.2/30" > /etc/net/ifaces/gre1/ipv4address
+sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/net/sysctl.conf
+sysctl -w net.ipv4.ip_forward=1
+sysctl net.ipv4.ip_forward
+systemctl restart network && sleep 3
+apt-get update && apt-get install -y tzdata nftables frr sudo 
+timedatectl set-timezone Asia/Vladivostok && date 
+cat <<EOF > /etc/nftables/nftables.nft
+#!/usr/sbin/nft -f
+flush ruleset
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat;
+        oifname "enp7s1" masquerade
+    }
+}
+EOF
+systemctl enable --now nftables && systemctl status --no-pager nftables
+nft list ruleset
+sed -i 's/ospfd=no/ospfd=yes/' /etc/frr/daemons
+cat <<'EOF' > /etc/frr/frr.conf
+interface gre1
+ ip ospf area 0
+ ip ospf authentication
+ ip ospf authentication-key P@ssw0rd
+ no ip ospf passive
+exit
+!
+interface enp7s2
+ ip ospf area 0
+exit
+!
+router ospf
+ passive-interface default
+exit
+EOF
+systemctl enable --now frr && systemctl status --no-pager frr
+systemctl restart network
+ping 10.10.10.1 -c 5
+useradd -m -s /bin/bash net_admin
+echo "net_admin:P@ssw0rd" | chpasswd
+echo "net_admin ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/net_admin
+echo "nameserver 172.16.100.2" > /etc/net/ifaces/enp7s1/resolv.conf
+systemctl restart network sshd
+vtysh -c "show ip ospf neighbor"
+history -a
