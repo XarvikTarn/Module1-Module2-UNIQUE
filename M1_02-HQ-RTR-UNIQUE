@@ -23,19 +23,19 @@ TYPE=vlan
 HOST=enp7s2
 VID=100
 EOF
-echo "172.16.100.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan100/ipv4address
+echo "172.16.100.1/[ВСТАВЬ_МАСКУ_СЮДА - ДЛЯ VLAN 100]" > /etc/net/ifaces/vlan100/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan200/options
 TYPE=vlan
 HOST=enp7s2
 VID=200
 EOF
-echo "172.16.200.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan200/ipv4address
+echo "172.16.200.1/[ВСТАВЬ_МАСКУ_СЮДА - ДЛЯ VLAN 200]" > /etc/net/ifaces/vlan200/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan999/options
 TYPE=vlan
 HOST=enp7s2
 VID=999
 EOF
-echo "172.16.99.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan999/ipv4address
+echo "172.16.99.1/[ВСТАВЬ_МАСКУ_СЮДА - ДЛЯ VLAN 999]" > /etc/net/ifaces/vlan999/ipv4address
 sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/net/sysctl.conf
 sysctl -w net.ipv4.ip_forward=1
 sysctl net.ipv4.ip_forward
