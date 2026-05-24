@@ -17,25 +17,25 @@ TUNREMOTE=172.16.2.2
 TUNTTL=64
 TUNOPTIONS='ttl 64'
 EOF
-echo "10.10.10.1/30" > /etc/net/ifaces/gre1/ipv4address
+echo "10.10.10.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/gre1/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan100/options
 TYPE=vlan
 HOST=enp7s2
 VID=100
 EOF
-echo "172.16.100.1/28" > /etc/net/ifaces/vlan100/ipv4address
+echo "172.16.100.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan100/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan200/options
 TYPE=vlan
 HOST=enp7s2
 VID=200
 EOF
-echo "172.16.200.1/27" > /etc/net/ifaces/vlan200/ipv4address
+echo "172.16.200.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan200/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan999/options
 TYPE=vlan
 HOST=enp7s2
 VID=999
 EOF
-echo "172.16.99.1/29" > /etc/net/ifaces/vlan999/ipv4address
+echo "172.16.99.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/vlan999/ipv4address
 sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/net/sysctl.conf
 sysctl -w net.ipv4.ip_forward=1
 sysctl net.ipv4.ip_forward
@@ -83,7 +83,7 @@ systemctl enable --now frr && systemctl status --no-pager frr
 cat <<EOF > /etc/dnsmasq.conf
 port=0
 interface=vlan200
-dhcp-range=172.16.200.10,172.16.200.14,255.255.255.224,12h
+dhcp-range=172.16.200.10,172.16.200.14,[ВСТАВЬ_МАСКУ_СЮДА - В ФОРМАТЕ ТИПА 255.255.255.255 - глянь в поле NETMASK на сайте IP Calculator],12h
 dhcp-host=id:01:11:11:11:11:11,172.16.200.10
 dhcp-option=3,172.16.200.1    
 dhcp-option=6,172.16.100.2    
