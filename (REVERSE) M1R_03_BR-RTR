@@ -1,0 +1,10 @@
+hostnamectl set-hostname NONAME && exec bash
+sed -i 's|http://10.45.33.250:3142/altlinux|http://ftp.altlinux.org/pub/distributions/ALTLinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s{1,2}
+rm -rf /etc/net/ifaces/gre1
+sed -i 's/net.ipv4.ip_forward = 1/net.ipv4.ip_forward = 0/' /etc/net/sysctl.conf
+sysctl -w net.ipv4.ip_forward=0
+sysctl net.ipv4.ip_forward
+apt-get remove -y --purge tzdata nftables frr sudo 
+userdel -r net_admin
+systemctl restart reboot
