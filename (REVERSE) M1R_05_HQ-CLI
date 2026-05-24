@@ -1,0 +1,5 @@
+hostnamectl set-hostname NONAME && exec bash
+sed -i 's|http://10.45.33.250:3142/altlinux|http://ftp.altlinux.org/pub/distributions/ALTLinux|g' /etc/apt/sources.list.d/alt.list
+nmcli con del DHCP-CLI 
+apt-get remove -y --purge tzdata 
+systemctl restart reboot
