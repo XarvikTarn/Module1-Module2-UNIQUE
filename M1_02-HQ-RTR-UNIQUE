@@ -17,7 +17,7 @@ TUNREMOTE=172.16.2.2
 TUNTTL=64
 TUNOPTIONS='ttl 64'
 EOF
-echo "10.10.10.1/[ВСТАВЬ_МАСКУ_СЮДА]" > /etc/net/ifaces/gre1/ipv4address
+echo "10.10.10.1/30" > /etc/net/ifaces/gre1/ipv4address
 cat <<EOF > /etc/net/ifaces/vlan100/options
 TYPE=vlan
 HOST=enp7s2
