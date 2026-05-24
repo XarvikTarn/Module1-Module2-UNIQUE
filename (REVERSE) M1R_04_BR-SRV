@@ -1,0 +1,6 @@
+hostnamectl set-hostname NONAME && exec bash
+sed -i 's|http://10.45.33.250:3142/altlinux|http://ftp.altlinux.org/pub/distributions/ALTLinux|g' /etc/apt/sources.list.d/alt.list
+rm -rf /etc/net/ifaces/enp7s1
+apt-get remove -y --purge tzdata 
+userdel sshuser
+systemctl restart reboot
